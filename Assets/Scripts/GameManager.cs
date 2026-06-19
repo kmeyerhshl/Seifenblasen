@@ -9,50 +9,109 @@ using System.IO;
 using Microsoft.MixedReality.Toolkit;
 
 
+/// <summary>
+/// Zentrale Steuerung des Spiels.
+/// Der GameManager verwaltet den Spielablauf, die Punktvergabe,
+/// die verschiedenen Spielmodi, die Levelverwaltung, die Speicherung
+/// von Eye-Tracking-Daten sowie die Erfassung und Auswertung von
+/// Reaktionszeiten.
+/// </summary>
 public class GameManager : MonoBehaviour
 {
+    // ------------------- REFERENZEN -------------------
 
+    // Eye-Tracking-Komponente zur Aufzeichnung der Blickdaten
     public EyeTracking eyeTracker;
+
+    // Referenz auf den Spieltimer
     private GameTimer gameTimer;
+
+    // ------------------- SPIELEINSTELLUNGEN -------------------
+
     [Header("Game Settings")]
+
+    // Dauer einer Spielrunde in Sekunden
     public float gameDuration = 30f;
+
+    // Verantwortlich für Erzeugung und Verwaltung der Blasen
     public BubbleSpawner spawner;
 
+    // ------------------- UI -------------------
+
     [Header("UI")]
+
+    // Anzeige des aktuellen Punktestands
     public TextMeshProUGUI scoreText;
+
+    // Anzeige von Spielanweisungen
     public TextMeshPro instructionText;
 
+    // ------------------- LEVEL -------------------
+
     [Header("Levels")]
+
+    // Aktuell gewählter Schwierigkeitsgrad
     public int currentLevel = 1;
+
+    // Spielbereich für Level 1 (klein)
     public Vector3 level1Area = new Vector3(0.8f, 0.7f, 0.8f);
+
+    // Spielbereich für Level 2 (mittel)
     public Vector3 level2Area = new Vector3(1.2f, 1.0f, 1.0f);
+
+    // Spielbereich für Level 3 (groß)
     public Vector3 level3Area = new Vector3(1.6f, 1.3f, 1.0f);
 
+    // ------------------- HIGHSCORE -------------------
+
     [Header("Highscore")]
+
+    // UI-Anzeige der Highscores
     public TextMeshProUGUI highscoreText;
 
+    // ------------------- STANDARDWERTE -------------------
+
     [Header("Default Play Area (no calibration)")]
+
+    // Standard-Höhenbereich ohne vorherige Kalibrierung
     public float defaultMinY = 0f;
     public float defaultMaxY = 1f;
 
+    // Gibt an, ob aktuell eine Spielrunde läuft
     private bool gameActive = false;
+
+    // Verhindert mehrfaches Speichern eines Highscores
     private bool highscoreSaved = false;
+
+    // Aktueller Punktestand
     public int score { get; private set; }
 
+    // ------------------- FARBEN -------------------
+
     [Header("Colors")]
+
+    // Vordefinierte Materialien für Farbmodi
     public Material red;
     public Material blue;
     public Material green;
+
+    // Aktuell ausgewählte Zielfarbe
     public Color highlightMaterial;
 
     // =========================
     // GAME FLOW
     // =========================
 
+    /// <summary>
+    /// Definiert die verfügbaren Spielmodi.
+    /// </summary>
     public enum GameMode
     {
+        // Jede Blase darf geplatzt werden
         Standard,
+        // Nur farblich markierte Blasen zählen
         ColorOnly,
+        // Blasen müssen in einer bestimmten Reihenfolge gewählt werden
         Sequence
     }
 
@@ -103,6 +162,11 @@ public class GameManager : MonoBehaviour
         UpdateScoreUI();
     }
 
+    /// <summary>
+    /// Wird in jedem Frame während einer aktiven Spielrunde aufgerufen.
+    /// Übernimmt die vom EyeTracking-System aufgezeichneten Blickdaten
+    /// und speichert diese für die spätere Analyse.
+    /// </summary>
     void Update()
     {
         if (!gameActive || eyeTracker == null) return;
@@ -123,6 +187,11 @@ public class GameManager : MonoBehaviour
         //CheckGazeOnBubbles(gazeData);
     }
 
+    /// <summary>
+    /// Prüft, ob der aktuelle Blickstrahl eine aktive Blase trifft.
+    /// Wird aktuell nicht verwendet, stellt jedoch eine alternative
+    /// Methode zur Erkennung von Blickkontakten dar.
+    /// </summary>
     void CheckGazeOnBubbles(Vector3 gazePoint)
     {
         var eyeProvider = CoreServices.InputSystem?.EyeGazeProvider;
@@ -154,6 +223,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Registriert eine neu erzeugte Blase und erzeugt einen
+    /// Datensatz für die spätere Auswertung.
+    /// </summary>
     public int RegisterBubble(float spawnTime, Vector3 pos)
     {
         int id = nextBubbleId++;
@@ -168,6 +241,11 @@ public class GameManager : MonoBehaviour
         return id;
     }
 
+    /// <summary>
+    /// Speichert die Eye-Reaktionszeit einer Blase.
+    /// Die Zeit entspricht der Dauer zwischen Erscheinen der Blase
+    /// und dem ersten Blickkontakt.
+    /// </summary>
     public void LogEyeReactionTime(int id, float t)
     {
         if (bubbleLogs.ContainsKey(id))
@@ -177,6 +255,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Speichert die Touch-Reaktionszeit einer Blase.
+    /// Die Zeit entspricht der Dauer zwischen Erscheinen der Blase
+    /// und der Berührung durch den Nutzer.
+    /// </summary>
     public void LogTouchReactionTime(int id, float t)
     {
         if (bubbleLogs.ContainsKey(id))
@@ -186,6 +269,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Exportiert sämtliche während einer Spielrunde erfassten Daten.
+    /// Es werden getrennte Dateien für Spielinformationen,
+    /// Blasendaten und Eye-Tracking-Daten erzeugt.
+    /// </summary>
     public void SaveReactionSummary(List<EyeTracking.GazeSample> data)
     {
         string fileInfo = "info_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".txt";
@@ -249,6 +337,11 @@ public class GameManager : MonoBehaviour
         Debug.Log("Saved reaction summary: ");
     }
 
+    /// <summary>
+    /// Startet eine neue Spielrunde.
+    /// Alle Messdaten werden zurückgesetzt, das Eye Tracking aktiviert
+    /// und die Blasenerzeugung gestartet.
+    /// </summary>
     public void StartGame()
     {
         Debug.Log("▶️ StartGame");
@@ -277,7 +370,10 @@ public class GameManager : MonoBehaviour
         spawner.StartSpawning();
     }
 
-    //void SaveToFile(List<Vector3> data)
+    /// <summary>
+    /// Exportiert aufgezeichnete Blickdaten in eine Textdatei.
+    /// Wird hauptsächlich für Debug- und Testzwecke verwendet.
+    /// </summary>
     void SaveToFile(List<EyeTracking.GazeSample> data)
     {
         string fileName = "gazeData_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".txt";
@@ -296,6 +392,11 @@ public class GameManager : MonoBehaviour
         Debug.Log("Saved to: " + path);
     }
 
+    /// <summary>
+    /// Beendet die aktuelle Spielrunde.
+    /// Das Eye Tracking wird gestoppt, alle Daten gespeichert
+    /// und der Highscore aktualisiert.
+    /// </summary>
     public void EndGame()
     {
         if (!gameActive) return;
@@ -321,6 +422,10 @@ public class GameManager : MonoBehaviour
         eyeTracker.ResetData();
     }
 
+    /// <summary>
+    /// Bricht die aktuelle Spielrunde ab und entfernt
+    /// alle aktiven Blasen.
+    /// </summary>
     public void RestartGame()
     {
         Debug.Log("🔄 RestartGame");
@@ -330,6 +435,10 @@ public class GameManager : MonoBehaviour
         spawner.ResetBubbles();
     }
 
+    /// <summary>
+    /// Initialisiert wichtige Referenzen vor Spielbeginn.
+    /// Wird automatisch beim Laden der Szene aufgerufen.
+    /// </summary>
     private void Awake()
     {
         if (gameTimer == null)
@@ -342,6 +451,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Schließt alle Menüs zur Spielkonfiguration.
+    /// </summary>
     public void CloseAllSetupSubMenus()
     {
         gameTimer.levelButtons.SetActive(false);
@@ -350,25 +462,37 @@ public class GameManager : MonoBehaviour
         gameTimer.colorButtons.SetActive(false);
     }
 
-
+    /// <summary>
+    /// Öffnet das Menü zur Auswahl des Schwierigkeitsgrades.
+    /// </summary>
     public void SelectLevel()
     {
         CloseAllSetupSubMenus();
         gameTimer.levelButtons.SetActive(true);
     }
 
+    /// <summary>
+    /// Öffnet das Menü zur Auswahl der erlaubten Hand.
+    /// </summary>
     public void SelectHand()
     {
         CloseAllSetupSubMenus();
         gameTimer.handButtons.SetActive(true);
     }
 
+    /// <summary>
+    /// Öffnet das Menü zur Auswahl des Spielmodus.
+    /// </summary>
     public void SelectMode()
     {
         CloseAllSetupSubMenus();
         gameTimer.modeButtons.SetActive(true);
     }
 
+    /// <summary>
+    /// Aktiviert den gewählten Spielmodus und passt
+    /// die Spielanweisung entsprechend an.
+    /// </summary>
     public void SelectMode(int mode)
     {
         if (mode == 0)
@@ -391,6 +515,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Vergibt eine neue Sequenznummer für eine erzeugte Blase.
+    /// Die Nummer wird gleichzeitig zur Liste aktiver Ziele hinzugefügt.
+    /// </summary>
     public int GetNextSequenceNumber()
     {
         Debug.Log("GetNextSequenceNumber");
@@ -406,6 +534,11 @@ public class GameManager : MonoBehaviour
         return number;
     }
 
+    /// <summary>
+    /// Entfernt eine Sequenznummer aus der Liste aktiver Ziele.
+    /// Wird aufgerufen, wenn die zugehörige Blase erfolgreich
+    /// ausgewählt wurde.
+    /// </summary>
     public void RemoveSequenceNumber(int number)
     {
         Debug.Log("RemoveSequenceNumber");
@@ -415,6 +548,10 @@ public class GameManager : MonoBehaviour
             ChooseNewTarget();
     }
 
+    /// <summary>
+    /// Wählt zufällig eine der aktuell vorhandenen
+    /// Sequenznummern als nächstes Ziel aus.
+    /// </summary>
     void ChooseNewTarget()
     {
         Debug.Log("ChooseNewTarget");
@@ -430,7 +567,9 @@ public class GameManager : MonoBehaviour
         UpdateScoreUI();
     }
 
-
+    /// <summary>
+    /// Öffnet das Menü zur Auswahl der Zielfarbe.
+    /// </summary>
     public void SelectColor()
     {
         CloseAllSetupSubMenus();
@@ -440,7 +579,9 @@ public class GameManager : MonoBehaviour
     // =========================
     // LEVEL
     // =========================
-
+    /// <summary>
+    /// Setzt den gewünschten Schwierigkeitsgrad.
+    /// </summary>
     public void SelectLevel(int level)
     {
         Debug.Log($"🎚 Level {level} gewählt");
@@ -451,6 +592,11 @@ public class GameManager : MonoBehaviour
         //FindFirstObjectByType<GameTimer>()?.StartCountdown();
     }
 
+    /// <summary>
+    /// Berechnet den für das aktuelle Level gültigen Spielbereich.
+    /// Grundlage sind die zuvor ermittelten Kalibrierungsdaten
+    /// des Nutzers.
+    /// </summary>
     void ApplyLevelSettings()
     {
         bool hasCalib = PlayerPrefs.HasKey("Calib_MinY") && PlayerPrefs.HasKey("Calib_MaxY");
@@ -590,7 +736,9 @@ public class GameManager : MonoBehaviour
     // =========================
     // SCORE
     // =========================
-
+    /// <summary>
+    /// Erhöht den Punktestand um den angegebenen Wert.
+    /// </summary>
     public void AddScore(int amount)
     {
         if (!gameActive) return;
@@ -599,6 +747,10 @@ public class GameManager : MonoBehaviour
         UpdateScoreUI();
     }
 
+    /// <summary>
+    /// Aktualisiert die Anzeige des Punktestands.
+    /// Im Sequenzmodus wird stattdessen das aktuelle Ziel angezeigt.
+    /// </summary>
     public void UpdateScoreUI()
     {
         if (currentGameMode == GameManager.GameMode.Sequence)
@@ -611,12 +763,18 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Gibt zurück, ob aktuell eine Spielrunde aktiv ist.
+    /// </summary>
     public bool IsGameActive() => gameActive;
 
     // =========================
     // HIGHSCORE
     // =========================
-
+    /// <summary>
+    /// Speichert den aktuellen Punktestand in der Highscoreliste.
+    /// Es werden maximal die fünf besten Ergebnisse gespeichert.
+    /// </summary>
     void SaveHighscore(int newScore, string mode)
     {
         string prefix = mode;
@@ -654,6 +812,9 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    /// <summary>
+    /// Definiert, welche Hand für die Interaktion zugelassen ist.
+    /// </summary>
     public enum HandMode
     {
         BothHands,
@@ -662,7 +823,9 @@ public class GameManager : MonoBehaviour
     }
 
     public HandMode handMode = HandMode.BothHands;
-
+    /// <summary>
+    /// Erlaubt die Nutzung beider Hände.
+    /// </summary>
     public void SetHandModeBoth()
     {
         handMode = HandMode.BothHands;
@@ -670,6 +833,9 @@ public class GameManager : MonoBehaviour
         CloseAllSetupSubMenus();
     }
 
+    /// <summary>
+    /// Erlaubt ausschließlich die linke Hand.
+    /// </summary>
     public void SetHandModeLeft()
     {
         handMode = HandMode.LeftHandOnly;
@@ -677,6 +843,9 @@ public class GameManager : MonoBehaviour
         CloseAllSetupSubMenus();
     }
 
+    /// <summary>
+    /// Erlaubt ausschließlich die rechte Hand.
+    /// </summary>
     public void SetHandModeRight()
     {
         handMode = HandMode.RightHandOnly;
@@ -684,18 +853,27 @@ public class GameManager : MonoBehaviour
         CloseAllSetupSubMenus();
     }
 
+    /// <summary>
+    /// Legt Rot als Zielfarbe für den Farbmodus fest.
+    /// </summary>
     public void ColorRed()
     {
         highlightMaterial = Color.red;
         CloseAllSetupSubMenus();
     }
 
+    /// <summary>
+    /// Legt Blau als Zielfarbe für den Farbmodus fest.
+    /// </summary>
     public void ColorBlue()
     {
         highlightMaterial = Color.blue;
         CloseAllSetupSubMenus();
     }
 
+    /// <summary>
+    /// Legt Grün als Zielfarbe für den Farbmodus fest.
+    /// </summary>
     public void ColorGreen()
     {
         highlightMaterial = Color.green;

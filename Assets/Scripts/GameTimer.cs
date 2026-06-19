@@ -4,51 +4,112 @@ using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 
+/// <summary>
+/// Verwaltet den zeitlichen Ablauf einer Spielrunde.
+/// Die Klasse steuert den Spiel-Countdown, die verbleibende Spielzeit,
+/// die Benutzeroberfläche sowie den Start und das Ende einer Runde.
+/// </summary>
 public class GameTimer : MonoBehaviour
 {
+    // ------------------- UI REFERENZEN -------------------
+
     [Header("UI")]
+
+    // Canvas mit Spielinformationen und Timer
     public GameObject infoCanvas;
+
+    // Anzeige der verbleibenden Spielzeit
     public TextMeshProUGUI timerText;
+
+    // Anzeige der aktuell gewählten Spieldauer
     public TextMeshPro selectedTime;
+
+    // Anzeige für Hinweise und Countdown
     public TextMeshProUGUI hintText;
+
+    // Endbildschirm
     public GameObject endCanvas;
+
+    // Neustart-Button
     public GameObject restartButton;
+
+    // Einstellungsmenü vor Spielbeginn
     public GameObject setupCanvas;
+
+    // Untermenüs für Spielkonfiguration
     public GameObject levelButtons;
     public GameObject handButtons;
     public GameObject modeButtons;
     public GameObject colorButtons;
 
 
+    // ------------------- SPIELEINSTELLUNGEN -------------------
+
     [Header("Settings")]
+
+    // Dauer einer Spielrunde in Sekunden
     public float gameDuration = 30f;
 
+    // Aktuell vergangene Spielzeit
     public float currentTime = 0f;
+
+    // Gibt an, ob der Timer läuft
     private bool timerActive = false;
 
+    // ------------------- DAUERBESCHRÄNKUNGEN -------------------
+
     [Header("Duration Limits")]
+
+    // Kürzeste erlaubte Spielzeit
     public float minDuration = 10f;
+
+    // Längste erlaubte Spielzeit
     public float maxDuration = 120f;
+
+    // Schrittweite beim Erhöhen oder Verringern
     public float durationStep = 5f;
 
+    // Referenz auf den zentralen Spielmanager
     private GameManager gameManager;
 
+    // ------------------- AUDIO -------------------
+
     [Header("Pop Feedback")]
+
+    // Sound beim Spielende
     public AudioClip popSound;
 
+    // Audioquelle für Endsound
     private AudioSource audioSource;
+
     [Header("Countdown Feedback")]
+
+    // Sound für den Countdown
     public AudioClip countdownSound;
+
+    // Audioquelle für Countdown-Sounds
     private AudioSource audioCountdown;
+
+    // Sound beim Spielstart
     public AudioClip startSound;
+
+    // Audioquelle für Startsignal
     private AudioSource audioStart;
 
+    /// <summary>
+    /// Initialisiert Referenzen und lädt die zuletzt gespeicherte
+    /// Spieldauer aus den Benutzereinstellungen.
+    /// </summary>
     void Awake()
     {
         gameManager = FindFirstObjectByType<GameManager>();
         gameDuration = PlayerPrefs.GetFloat("GameDuration", gameDuration);
     }
 
+    /// <summary>
+    /// Initialisiert Audioquellen und setzt die Benutzeroberfläche
+    /// in ihren Ausgangszustand.
+    /// </summary>
     void Start()
     {
         audioSource = gameObject.AddComponent<AudioSource>();
@@ -76,6 +137,10 @@ public class GameTimer : MonoBehaviour
         //StartCountdown();
     }
 
+    /// <summary>
+    /// Wird vom Setup-Menü aufgerufen.
+    /// Schließt das Konfigurationsmenü und startet den Countdown.
+    /// </summary>
     public void StartGameFromSetup()
     {
         setupCanvas.SetActive(false);
@@ -86,6 +151,10 @@ public class GameTimer : MonoBehaviour
     // COUNTDOWN
     // =========================
 
+    /// <summary>
+    /// Startet den Spiel-Countdown.
+    /// Bereits laufende Coroutines werden vorher beendet.
+    /// </summary>
     public void StartCountdown()
     {
         setupCanvas.SetActive(false);
@@ -93,6 +162,10 @@ public class GameTimer : MonoBehaviour
         StartCoroutine(CountdownRoutine());
     }
 
+    /// <summary>
+    /// Führt den visuellen und akustischen Countdown vor Spielbeginn aus.
+    /// Nach Ablauf wird das eigentliche Spiel gestartet.
+    /// </summary>
     IEnumerator CountdownRoutine()
     {
         timerActive = false;
@@ -127,6 +200,10 @@ public class GameTimer : MonoBehaviour
         StartTimer();
     }
 
+    /// <summary>
+    /// Setzt die Benutzeroberfläche nach einer Spielrunde zurück.
+    /// Aktuell wird dabei kein automatischer Neustart ausgelöst.
+    /// </summary>
     public void RestartGame()
     {
         Debug.Log("🔄 Restart Button gedrückt");
@@ -149,12 +226,20 @@ public class GameTimer : MonoBehaviour
     // TIMER
     // =========================
 
+    /// <summary>
+    /// Startet den eigentlichen Spieltimer.
+    /// Die vergangene Spielzeit wird auf null zurückgesetzt.
+    /// </summary>
     void StartTimer()
     {
         currentTime = 0f;
         timerActive = true;
     }
 
+    /// <summary>
+    /// Erhöht die Spieldauer innerhalb der definierten Grenzen
+    /// und aktualisiert die Anzeige.
+    /// </summary>
     public void IncreaseTime()
     {
         //if (timerActive) return; // während Spiel nicht ändern
@@ -164,6 +249,10 @@ public class GameTimer : MonoBehaviour
         SaveDuration();
     }
 
+    /// <summary>
+    /// Verringert die Spieldauer innerhalb der definierten Grenzen
+    /// und aktualisiert die Anzeige.
+    /// </summary>
     public void DecreaseTime()
     {
         //if (timerActive) return;
@@ -173,6 +262,10 @@ public class GameTimer : MonoBehaviour
         SaveDuration();
     }
 
+    /// <summary>
+    /// Aktualisiert die Anzeige der aktuell gewählten Spieldauer
+    /// im Setup-Menü.
+    /// </summary>
     void UpdatePreviewUI()
     {
         TimeSpan time = TimeSpan.FromSeconds(gameDuration);
@@ -181,12 +274,20 @@ public class GameTimer : MonoBehaviour
     }
 
 
-
+    /// <summary>
+    /// Speichert die aktuell gewählte Spieldauer dauerhaft
+    /// in den Unity PlayerPrefs.
+    /// </summary>
     void SaveDuration()
     {
         PlayerPrefs.SetFloat("GameDuration", gameDuration);
     }
 
+    /// <summary>
+    /// Wird in jedem Frame aufgerufen.
+    /// Aktualisiert die verbleibende Spielzeit und beendet
+    /// das Spiel automatisch nach Ablauf des Timers.
+    /// </summary>
     void Update()
     {
         if (!timerActive) return;
@@ -205,6 +306,12 @@ public class GameTimer : MonoBehaviour
         timerText.text = $"Time: {time.Minutes:00}:{time.Seconds:00}";
     }
 
+    /// <summary>
+    /// Beendet die aktuelle Spielrunde.
+    /// Spieltimer und Spielmanager werden gestoppt,
+    /// die Benutzeroberfläche wird zurückgesetzt und
+    /// ein akustisches Signal ausgegeben.
+    /// </summary>
     void EndGame()
     {
         Debug.Log("⏰ Zeit abgelaufen");
@@ -223,158 +330,3 @@ public class GameTimer : MonoBehaviour
         infoCanvas.SetActive(false);
     }
 }
-
-/*public class GameTimer : MonoBehaviour
-{
-    [Header("UI References")]
-    //public GameObject hintCanvas;   // Canvas mit Countdown-Zahlen
-    public GameObject infoCanvas;   // Canvas mit Timeranzeige
-    public TextMeshProUGUI _text;   // Timertext (z. B. „Zeit: 00:30“)
-    public TextMeshProUGUI hintText; // Countdown-Anzeige
-
-    public GameObject endCanvas;
-    public TextMeshProUGUI _endText;
-    public GameObject restartButton;
-    public GameObject endGame;
-
-    [Header("Settings")]
-    public float gameDuration = 30f; // Spielzeit in Sekunden
-
-    private bool _timerActive = false;
-    private float _currentTime = 0f;
-
-    [Header("Pop Feedback")]
-    public AudioClip popSound;
-
-    private AudioSource audioSource;
-
-    void Start()
-    {
-        endCanvas.SetActive(false);
-        restartButton.SetActive(false);
-        StartCoroutine(StartAfterCountdown());
-        audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.playOnAwake = false;
-        audioSource.spatialBlend = 1f;
-    }
-
-    IEnumerator StartAfterCountdown()
-    {
-        infoCanvas.SetActive(true);
-        //infoCanvas.SetActive(false);
-        //hintCanvas.SetActive(true);
-
-        int count = 3;
-        while (count > 0)
-        {
-            ShowHint(count.ToString());
-            yield return new WaitForSeconds(1f);
-            count--;
-        }
-
-        ShowHint("Los!");
-        yield return new WaitForSeconds(0.5f);
-        //FindObjectOfType<BubbleSpawner>()?.ResumeSpawning();
-
-        //hintCanvas.SetActive(false);
-        //infoCanvas.SetActive(true);
-
-        StartTimer();
-    }
-
-    /*public void RestartGame()
-    {
-        Debug.Log("🔄 Spiel wird neu gestartet...");
-
-        // 1) Timer stoppen
-        _timerActive = false;
-
-        // 2) Alle Werte zurücksetzen
-        _currentTime = 0f;
-        var gm = FindFirstObjectByType<GameManager>();
-        gm.score = 0;
-
-        // 3) Alte Bubbles löschen
-        var spawner = FindFirstObjectByType<BubbleSpawner>();
-        if (spawner != null)
-        {
-            spawner.ResetBubbles();
-            spawner.StartSpawning();
-        }
-
-        // 4) UI zurücksetzen
-        infoCanvas.SetActive(false);
-        //hintCanvas.SetActive(true);
-        endCanvas.SetActive(false);
-
-        // 5) Countdown erneut starten
-        StartCoroutine(StartAfterCountdown());
-        restartButton.SetActive(false);
-    }
-    
-
-    void ShowHint(string msg)
-    {
-        //if (hintText != null)
-        _text.text = msg;
-    }
-
-    void Update()
-    {
-        if (!_timerActive) return;
-
-        _currentTime += Time.deltaTime;
-
-        float timeRemaining = gameDuration - _currentTime;
-
-        if (timeRemaining <= 0)
-        {
-            timeRemaining = 0;
-            _timerActive = false;
-            if (popSound != null && audioSource != null)
-            {
-                audioSource.PlayOneShot(popSound);
-            }
-            EndGame();
-            restartButton.SetActive(true);
-        }
-
-        // Zeit formatieren
-        TimeSpan time = TimeSpan.FromSeconds(timeRemaining);
-        _text.text = $"Time: {time.Minutes:00}:{time.Seconds:00}";
-    }
-
-    public void StartTimer()
-    {
-        _currentTime = 0f;
-        _timerActive = true;
-
-        // Bubble-Spawner aktivieren
-        FindFirstObjectByType<BubbleSpawner>()?.StartSpawning();
-    }
-
-    public void StopTimer()
-    {
-        _timerActive = false;
-        FindFirstObjectByType<BubbleSpawner>()?.StopSpawning();
-        //FindObjectOfType<BubbleSpawner>()?.StartSpawning();
-    }
-
-    private void EndGame()
-    {
-        endCanvas.SetActive(true);
-        restartButton.SetActive(true);
-        StopTimer();
-        Debug.Log("⏰ Spielzeit vorbei!");
-        _endText.text = "Spiel vorbei";
-        infoCanvas.SetActive(false);
-
-        // Optional: Punktestand ausgeben
-        var gm = FindFirstObjectByType<GameManager>();
-        if (gm != null)
-        {
-            gm.EndGame();
-            Debug.Log("gm EndGame");
-        }
-    }
-}*/

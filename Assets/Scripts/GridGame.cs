@@ -4,26 +4,61 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
+/// <summary>
+/// Implementiert ein Rasterspiel mit Seifenblasen.
+/// Innerhalb eines festen Gitters wird jeweils eine Zielblase markiert,
+/// die vom Nutzer berührt werden muss. Nach erfolgreicher Auswahl wird
+/// die Blase entfernt, die Punktzahl erhöht und eine neue Zielblase gewählt.
+/// </summary>
 public class GridGame : MonoBehaviour
 {
+    // ------------------- REFERENZEN -------------------
+
+    // UI-Manager für Menüs und Spielende
     public GridGameUIManager gridGameUIManager;
+
+    // Prefab einer einzelnen Blase
     public GameObject bubblePrefab;
+    // ------------------- GITTEREINSTELLUNGEN -------------------
+
+    // Anzahl der Zeilen und Spalten des Gitters
     public int gridSize = 4;
+
+    // Abstand zwischen den Blasen
     public float spacing = 0.3f;
+
+    // Standardmaterial für normale Blasen
     public Material normalMaterial;
+
+    // Material der aktuell markierten Zielblase
     public Material highlightMaterial;
+
+    // Material der aktuell markierten Zielblase
+    // ------------------- FARBOPTIONEN -------------------
+
     [Header("Colors")]
+
+    // Verfügbare Zielfarben
     public Material black;
     public Material blue;
     public Material green;
 
 
+    // Zweidimensionales Array aller Blasenobjekte
     private GameObject[,] bubbles;
+
+    // Position der aktuell markierten Zielblase
     private int currentX = -1;
     private int currentY = -1;
 
+    // ------------------- UI -------------------
+
     [Header("UI References")]
+
+    // Anzeige der verbleibenden Zeit
     public TextMeshProUGUI timerText;
+
+    // Anzeige der aktuellen Punktzahl
     public TextMeshProUGUI scoreText;
 
     [Header("Game Settings")]
@@ -34,9 +69,13 @@ public class GridGame : MonoBehaviour
     //public float maxDuration = 120f;
     //public float durationStep = 5f;
 
+    // Aktueller Punktestand
     int score = 0;
+
+    // Öffentlicher Zugriff auf den Punktestand
     public int Score => score;
-    //private float timeRemaining;
+
+    // Gibt an, ob aktuell eine Spielrunde läuft
     private bool gameActive = false;
 
     [Header("Pop Feedback")]
@@ -45,6 +84,11 @@ public class GridGame : MonoBehaviour
 
     private AudioSource audioSource;
 
+    /// <summary>
+    /// Startet eine neue Spielrunde.
+    /// Das Spielfeld wird zurückgesetzt, die Punktzahl gelöscht
+    /// und ein neues Raster erzeugt.
+    /// </summary>
     public void StartGame()
     {
         StopAllCoroutines();
@@ -102,6 +146,9 @@ public class GridGame : MonoBehaviour
         PlayerPrefs.SetFloat("GameDuration", gameDuration);
     }*/
 
+    /// <summary>
+    /// Startet das Spiel vollständig neu.
+    /// </summary>
     public void RestartGame()
     {
         StopAllCoroutines();
@@ -141,11 +188,18 @@ public class GridGame : MonoBehaviour
         timerText.text = $"Time: {time.Minutes:00}:{time.Seconds:00}";
     }*/
 
+    /// <summary>
+    /// Aktualisiert die Anzeige der aktuellen Punktzahl.
+    /// </summary>
     void UpdateScoreUI()
     {
         scoreText.text = $"Score: {score}";
     }
 
+    /// <summary>
+    /// Entfernt alle aktuell erzeugten Blasenobjekte
+    /// aus dem Raster.
+    /// </summary>
     public void ClearGrid()
     {
         if (bubbles == null) return;
@@ -160,6 +214,11 @@ public class GridGame : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Beendet die Spielrunde.
+    /// Alle Blasen werden deaktiviert und der UI-Manager
+    /// über das Spielende informiert.
+    /// </summary>
     public void EndGame()
     {
         gameActive = false;
@@ -175,6 +234,11 @@ public class GridGame : MonoBehaviour
             uiManager.ShowGameOver(score);
     }
 
+    /// <summary>
+    /// Erzeugt ein neues Raster aus Blasenobjekten.
+    /// Die Positionen werden anhand der Größe des
+    /// Hintergrundobjekts berechnet.
+    /// </summary>
     void GenerateGrid()
     {
         bubbles = new GameObject[gridSize, gridSize];
@@ -218,6 +282,10 @@ public class GridGame : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Wählt zufällig eine aktive Blase aus
+    /// und markiert sie als aktuelles Ziel.
+    /// </summary>
     public void HighlightRandomBubble()
     {
         // Alte entfernen
@@ -246,6 +314,10 @@ public class GridGame : MonoBehaviour
         bubbles[currentX, currentY].GetComponent<Renderer>().material = highlightMaterial;
     }
 
+    /// <summary>
+    /// Wird aufgerufen, wenn die Zielblase erfolgreich
+    /// berührt wurde.
+    /// </summary>
     public void BubbleHit(int x, int y)
     {
         if (!gameActive) return;
@@ -265,6 +337,10 @@ public class GridGame : MonoBehaviour
         StartCoroutine(RespawnBubble(x, y));
     }
 
+    /// <summary>
+    /// Spielt Partikel- und Soundeffekte
+    /// beim Platzen einer Blase ab.
+    /// </summary>
     void PopBubble(Vector3 position)
     {
         if (popEffectPrefab != null)
@@ -280,7 +356,10 @@ public class GridGame : MonoBehaviour
     }
 
 
-
+    /// <summary>
+    /// Aktiviert eine zuvor entfernte Blase nach
+    /// einer zufälligen Wartezeit erneut.
+    /// </summary>
     IEnumerator RespawnBubble(int x, int y)
     {
         yield return new WaitForSeconds(UnityEngine.Random.Range(2f, 3.5f));
@@ -289,6 +368,10 @@ public class GridGame : MonoBehaviour
         bubbles[x, y].GetComponent<Renderer>().material = normalMaterial;
     }
 
+    /// <summary>
+    /// Aktiviert alle Blasen erneut und setzt
+    /// ihre Materialien auf den Standardzustand zurück.
+    /// </summary>
     void ResetGrid()
     {
         if (bubbles == null)
@@ -304,7 +387,10 @@ public class GridGame : MonoBehaviour
         }
     }
 
-
+    /// <summary>
+    /// Sucht automatisch den UI-Manager,
+    /// falls dieser nicht manuell zugewiesen wurde.
+    /// </summary>
     private void Awake()
     {
         if (gridGameUIManager == null)
@@ -318,8 +404,8 @@ public class GridGame : MonoBehaviour
         highlightMaterial = black;
         gridGameUIManager.CloseAllSetupSubMenus();
     }
-    
-        public void ColorBlue()
+
+    public void ColorBlue()
     {
         highlightMaterial = blue;
         gridGameUIManager.CloseAllSetupSubMenus();
