@@ -14,9 +14,6 @@ public class HighscoreManager : MonoBehaviour
     /// Lädt und zeigt die gespeicherten Highscores
     /// für den gewählten Spielmodus an.
     /// </summary>
-    /// <param name="mode">
-    /// Spielmodus, z.B. "Reaction" oder "Grid".
-    /// </param>
     public void ShowHighscores(string mode)
     {
         // Präfix für die entsprechenden PlayerPrefs-Einträge

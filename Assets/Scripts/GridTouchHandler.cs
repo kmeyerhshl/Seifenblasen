@@ -20,6 +20,12 @@ public class GridTouchHandler : MonoBehaviour, IMixedRealityTouchHandler
     // Audioquelle zur Wiedergabe des Sounds
     private AudioSource audioSource;
 
+    // Speichert, ob die Blase bereits vom Eye Tracking erfasst wurde
+    public bool hasBeenLookedAt = false;
+
+    // Zeitpunkt des ersten Blickkontakts
+    public float firstLookTime = -1f;
+
     /// <summary>
     /// Initialisiert den Touch-Handler mit der zugehörigen
     /// Spielinstanz und den Grid-Koordinaten.

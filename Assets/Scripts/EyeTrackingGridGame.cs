@@ -3,14 +3,7 @@ using System.Collections.Generic;
 using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Input;
 
-/// <summary>
-/// Erfasst und speichert Eye-Tracking-Daten über MRTK.
-/// Während eines aktiven Spiels werden Blickrichtung, Blickpunkt,
-/// Kopfausrichtung sowie Treffer auf Spielobjekte aufgezeichnet.
-/// Die Daten dienen später der Analyse des Blickverhaltens
-/// und der Berechnung von Eye-Reaktionszeiten.
-/// </summary>
-public class EyeTracking : MonoBehaviour
+public class EyeTrackingGridGame : MonoBehaviour
 {
     // Aktiviert bzw. deaktiviert die Aufzeichnung
     public bool isTracking = false;
@@ -33,10 +26,10 @@ public class EyeTracking : MonoBehaviour
     public GameManager gameManager;
 
     // Referenz auf den Spieltimer
-    public GameTimer gameTimer;
+    public GridGameUIManager uiManager;
 
     // Liste aller aufgezeichneten Blickdaten
-    private List<GazeSample> gazeSamples = new List<GazeSample>();
+    private List<GridGazeSample> gazeSamples = new List<GridGazeSample>();
 
     /// <summary>
     /// Wird in jedem Frame aufgerufen.
@@ -77,20 +70,18 @@ public class EyeTracking : MonoBehaviour
 
         // Informationen über mögliche Blasentreffer
         int bubbleId = -1;
-        bool hitBubble = false;
+        //bool hitBubble = false;
 
         // ------------------- RAYCAST -------------------
 
-        bool hitSomething =
-            Physics.Raycast(
-                ray,
-                out RaycastHit hit,
-                maxDistance);
+        bool hitSomething = Physics.Raycast(ray, out RaycastHit hit, maxDistance);
+        GameObject hitObject = null;
 
         if (hitSomething)
         {
             // Treffpunkt speichern
             hitPoint = hit.point;
+            hitObject = hit.collider.gameObject;
 
             // Prüfen, ob eine Blase getroffen wurde
             var bubble = hit.collider.GetComponent<BubbleTouchHandler>();
@@ -101,7 +92,7 @@ public class EyeTracking : MonoBehaviour
 
             if (bubble != null && !bubble.hasBeenLookedAt)
             {
-                hitBubble = true;
+                //hitBubble = true;
                 bubbleId = bubble.bubbleId;
 
                 // Blase als bereits angesehen markieren
@@ -121,45 +112,41 @@ public class EyeTracking : MonoBehaviour
         {
             // Falls kein Objekt getroffen wird,
             // wird ein Punkt entlang der Blickrichtung verwendet
-            hitPoint =
-                origin +
-                direction * maxDistance;
+            hitPoint = origin + direction * maxDistance;
         }
 
         // ------------------- DATENSATZ SPEICHERN -------------------
-
-        gazeSamples.Add(new GazeSample
+        
+        gazeSamples.Add(new GridGazeSample
         {
-            // Spielzeitpunkt der Messung
-            time = gameTimer.currentTime,
+            time = uiManager.CurrentTime,
+            //time = Time.time - uiManager.gameDuration,
 
-            // Ursprung des Blickstrahls
             origin = origin,
-
-            // Blickrichtung
             direction = direction,
 
-            // Kopfausrichtung
             headForward = headForward,
-
-            // Winkel zwischen Augen- und Kopfbewegung
             eyeHeadAngle = eyeHeadAngle,
 
-            // Treffpunkt des Blickstrahls
             hitPoint = hitPoint,
 
-            // Kennzeichnet Treffer auf eine Blase
-            hitBubble = hitBubble,
-
-            // ID der betrachteten Blase
-            bubbleId = bubbleId
+            hitSomething = hitSomething,
+            hitObject = hitObject
         });
+    }
+
+    public GridGazeSample GetLatestSample()
+    {
+        if (gazeSamples.Count == 0)
+            return null;
+
+        return gazeSamples[gazeSamples.Count - 1];
     }
 
     /// <summary>
     /// Liefert alle bisher aufgezeichneten Blickdaten zurück.
     /// </summary>
-    public List<GazeSample> GetData()
+    public List<GridGazeSample> GetData()
     {
         return gazeSamples;
     }
@@ -187,30 +174,21 @@ public class EyeTracking : MonoBehaviour
     /// Repräsentiert einen einzelnen Eye-Tracking-Datensatz.
     /// Jeder Datensatz entspricht einer Messung in einem Frame.
     /// </summary>
-    public class GazeSample
+    public class GridGazeSample
     {
-        // Zeitpunkt der Messung
         public float time;
 
-        // Ursprung des Blickstrahls
         public Vector3 origin;
-
-        // Blickrichtung
         public Vector3 direction;
 
-        // Blickrichtung des Kopfes
         public Vector3 headForward;
-
-        // Winkel zwischen Kopf- und Blickrichtung
         public float eyeHeadAngle;
 
-        // Treffpunkt des Blickstrahls
         public Vector3 hitPoint;
 
-        // Gibt an, ob eine Blase getroffen wurde
-        public bool hitBubble;
+        public bool hitSomething;
 
-        // ID der betrachteten Blase
-        public int bubbleId;
+        public GameObject hitObject;
     }
 }
+

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using TMPro;
 using UnityEngine;
 
@@ -84,6 +85,22 @@ public class GridGame : MonoBehaviour
 
     private AudioSource audioSource;
 
+    private Dictionary<int, TargetReactionData> targetLogs = new Dictionary<int, TargetReactionData>();
+    public EyeTrackingGridGame eyeTracking;
+    //public GridGameUIManager uiManager;
+    private GameObject currentTarget;
+    private int currentTargetId = -1;
+    private int nextTargetId = 1;
+    [System.Serializable]
+    public class BubblePosition
+    {
+        public int row;
+        public int column;
+        public Vector3 position;
+    }
+
+    private List<BubblePosition> bubblePositions = new List<BubblePosition>();
+
     /// <summary>
     /// Startet eine neue Spielrunde.
     /// Das Spielfeld wird zurückgesetzt, die Punktzahl gelöscht
@@ -96,11 +113,19 @@ public class GridGame : MonoBehaviour
         currentX = -1;
         currentY = -1;
 
+
         ClearGrid();
         score = 0;
         //ResetGrid();
         //timeRemaining = gameDuration;
         gameActive = true;
+
+        eyeTracking.ClearData();
+        eyeTracking.isTracking = true;
+        targetLogs.Clear();
+        nextTargetId = 1;
+        currentTargetId = -1;
+        currentTarget = null;
 
         UpdateScoreUI();
         //UpdateTimerUI();
@@ -222,6 +247,11 @@ public class GridGame : MonoBehaviour
     public void EndGame()
     {
         gameActive = false;
+        var data = eyeTracking.GetData();
+        Debug.Log("Gaze samples: " + data.Count);
+        SaveGazeData(data);
+        SaveTargetData();
+        eyeTracking.isTracking = false;
 
         // Alle Bubbles deaktivieren
         for (int x = 0; x < gridSize; x++)
@@ -232,6 +262,68 @@ public class GridGame : MonoBehaviour
         var uiManager = FindFirstObjectByType<GridGameUIManager>();
         if (uiManager != null)
             uiManager.ShowGameOver(score);
+    }
+
+    public void SaveGazeData(List<EyeTrackingGridGame.GridGazeSample> data)
+    {
+        string fileName = "gaze_" +
+            DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".txt";
+
+        string path = Path.Combine(
+            Application.persistentDataPath,
+            fileName);
+
+        using (StreamWriter writer = new StreamWriter(path))
+        {
+            foreach (var s in data)
+            {
+                writer.WriteLine(
+                    $"{s.time};" +
+                    $"{s.origin.x};{s.origin.y};{s.origin.z};" +
+                    $"{s.direction.x};{s.direction.y};{s.direction.z};" +
+                    $"{s.headForward.x};{s.headForward.y};{s.headForward.z};" +
+                    $"{s.eyeHeadAngle};" +
+                    $"{s.hitPoint.x};{s.hitPoint.y};{s.hitPoint.z};" +
+                    $"{s.hitSomething};" +
+                    $"{(s.hitObject != null ? s.hitObject.name : "None")}"
+                );
+            }
+        }
+        Debug.Log(path);
+    }
+
+    public void SaveTargetData()
+    {
+        string fileName = "bubble_" +
+            DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".txt";
+
+        string path = Path.Combine(
+            Application.persistentDataPath,
+            fileName);
+
+        using (StreamWriter writer = new StreamWriter(path))
+        {
+            writer.WriteLine("targetId;row;column;x;y;z;appearTime;wasSeen;lookTime;wasTouched;touchTime");
+
+            foreach (var t in targetLogs.Values)
+            {
+                writer.WriteLine(
+                    $"{t.targetId};" +
+                    $"{t.row};" +
+                    $"{t.column};" +
+                    $"{t.position.x};" +
+                    $"{t.position.y};" +
+                    $"{t.position.z};" +
+                    $"{t.appearTime};" +
+                    $"{t.wasSeen};" +
+                    $"{t.lookTime};" +
+                    $"{t.wasTouched};" +
+                    $"{t.touchTime}"
+                );
+            }
+        }
+
+        Debug.Log("Targetdaten gespeichert: " + path);
     }
 
     /// <summary>
@@ -249,19 +341,21 @@ public class GridGame : MonoBehaviour
         float height = bg.localScale.y;
         Vector3 center = bg.position;
 
-        // Abstände berechnen
+        // Vom Hintergrund wird zunächst auf jeder Seite ein Rand (padding) abgezogen
         float paddingX = 0.2f;
         float paddingY = 0.2f;
 
         float usableWidth = width - 2 * paddingX;
         float usableHeight = height - 2 * paddingY;
 
+        // Abstand zwischen den Blasen berechnen
         float spacingX = usableWidth / (gridSize - 1);
         float spacingY = usableHeight / (gridSize - 1);
 
         // Startpunkt (unten links)
         Vector3 start = center + new Vector3(-width / 2 + paddingX, -height / 2 + paddingY, 0);
 
+        bubblePositions.Clear();
         for (int x = 0; x < gridSize; x++)
         {
             for (int y = 0; y < gridSize; y++)
@@ -278,6 +372,38 @@ public class GridGame : MonoBehaviour
                 handler.Initialize(this, x, y);
 
                 bubbles[x, y] = b;
+                bubblePositions.Add(new BubblePosition
+                {
+                    row = x,
+                    column = y,
+                    position = pos
+                });
+            }
+        }
+        SaveGridLayout();
+    }
+
+    public void SaveGridLayout()
+    {
+        string file =
+            "grid_" +
+            DateTime.Now.ToString("yyyyMMdd_HHmmss") +
+            ".txt";
+
+        using (StreamWriter writer =
+            new StreamWriter(Path.Combine(
+                Application.persistentDataPath,
+                file)))
+        {
+            foreach (var b in bubblePositions)
+            {
+                writer.WriteLine(
+                    $"{b.row};" +
+                    $"{b.column};" +
+                    $"{b.position.x};" +
+                    $"{b.position.y};" +
+                    $"{b.position.z}"
+                );
             }
         }
     }
@@ -312,6 +438,28 @@ public class GridGame : MonoBehaviour
         currentY = chosen.y;
 
         bubbles[currentX, currentY].GetComponent<Renderer>().material = highlightMaterial;
+        currentTarget = bubbles[currentX, currentY];
+        var handler = currentTarget.GetComponent<GridTouchHandler>();
+
+        if (handler != null)
+        {
+            handler.hasBeenLookedAt = false;
+            handler.firstLookTime = -1f;
+        }
+        currentTargetId = nextTargetId++;
+
+        targetLogs[currentTargetId] = new TargetReactionData
+        {
+            targetId = currentTargetId,
+
+            row = currentY,
+            column = currentX,
+
+            position = bubbles[currentX, currentY].transform.position,
+
+            appearTime = gridGameUIManager.CurrentTime
+            //appearTime = gridGameUIManager.gameDuration - gridGameUIManager.CurrentTime
+        };
     }
 
     /// <summary>
@@ -326,6 +474,11 @@ public class GridGame : MonoBehaviour
         score++;
         UpdateScoreUI();
         PopBubble(bubbles[x, y].transform.position);
+
+        targetLogs[currentTargetId].wasTouched = true;
+
+        //targetLogs[currentTargetId].touchTime = gridGameUIManager.CurrentTime - targetLogs[currentTargetId].appearTime;
+        targetLogs[currentTargetId].touchTime = gridGameUIManager.CurrentTime;
 
         // Bubble entfernen
         bubbles[x, y].SetActive(false);
@@ -398,6 +551,40 @@ public class GridGame : MonoBehaviour
             gridGameUIManager = FindFirstObjectByType<GridGameUIManager>();
         }
     }
+    void Update()
+    {
+        if (!gameActive) return;
+        //currentTime += Time.deltaTime;
+        CheckEyeTracking();
+    }
+
+    void CheckEyeTracking()
+    {
+        if (eyeTracking == null)
+            return;
+
+        var sample = eyeTracking.GetLatestSample();
+
+        if (sample == null)
+            return;
+
+        if (!sample.hitObject)
+            return;
+
+        if (currentTarget == null)
+            return;
+
+        if (sample.hitObject != currentTarget)
+            return;
+
+        if (!targetLogs[currentTargetId].wasSeen)
+        {
+            targetLogs[currentTargetId].wasSeen = true;
+
+            //targetLogs[currentTargetId].lookTime = gridGameUIManager.CurrentTime - targetLogs[currentTargetId].appearTime;
+            targetLogs[currentTargetId].lookTime = gridGameUIManager.CurrentTime;
+        }
+    }
 
     public void ColorBlack()
     {
@@ -450,3 +637,16 @@ public class GridGame : MonoBehaviour
 
 }
 
+[System.Serializable]
+public class TargetReactionData
+{
+    public int targetId;
+    public int row;
+    public int column;
+    public Vector3 position;
+    public float appearTime;
+    public bool wasSeen;
+    public float lookTime;
+    public bool wasTouched;
+    public float touchTime;
+}

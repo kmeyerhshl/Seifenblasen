@@ -59,6 +59,14 @@ public class GridGameUIManager : MonoBehaviour
 
     private AudioSource audioSource;
 
+    public float CurrentTime
+    {
+        get
+        {
+            return gameDuration - timer;
+        }
+    }
+
     private void Start()
     {
         // Startzustand der Benutzeroberfläche

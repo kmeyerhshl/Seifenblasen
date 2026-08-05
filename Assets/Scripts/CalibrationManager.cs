@@ -116,9 +116,6 @@ public class CalibrationManager : MonoBehaviour
     /// Liest die aktuelle Position einer Hand aus
     /// und aktualisiert die minimalen bzw. maximalen Höhenwerte.
     /// </summary>
-    /// <param name="hand">
-    /// Linke oder rechte Hand, die erfasst werden soll.
-    /// </param>
     void CaptureHand(Handedness hand)
     {
         // Position des Handgelenks bzw. der Handfläche abrufen

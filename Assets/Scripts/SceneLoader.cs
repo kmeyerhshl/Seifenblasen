@@ -8,9 +8,6 @@ public class SceneLoader : MonoBehaviour
     /// Vor dem Laden wird geprüft, ob die Szene
     /// in den Build Settings verfügbar ist.
     /// </summary>
-    /// <param name="sceneName">
-    /// Name der zu ladenden Szene.
-    /// </param>
     public void LoadSceneByName(string sceneName)
     {
         // Prüfen, ob die Szene geladen werden kann
